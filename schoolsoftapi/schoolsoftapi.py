@@ -1,7 +1,6 @@
 '''介接全誼笑務系統'''
 import io
 import re
-import shutil
 import subprocess
 import time
 from datetime import datetime
@@ -61,3 +60,25 @@ class SchoolSoftAPI:
                 time.sleep(300)
             else:
                 break
+
+    def _get_students_xls(self):
+        '''取得所有學生資料，原始格式為 xls'''
+        self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        response = self.session.post(
+            '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl),
+            data='selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=excel&x=31&y=11&sql='.format(self.semester),
+            stream=True,
+            verify=False
+        )
+        return io.BytesIO(response.raw.read())
+
+    def _get_teachers_xls(self):
+        '''取得所有老師資料，原始格式為 xls'''
+        self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        response = self.session.post(
+            '{0}/jsp/people/teaDataCsv.jsp'.format(self.baseurl),
+            data='username=&password=&chkall=on&colnames=idno&colnames=teaname&colnames=teasex&colnames=birthday&colnames=birthplace&colnames=teaphone&colnames=teamail&colnames=teamerrage&colnames=hanndy&colnames=teachdate&colnames=arrivedate&colnames=reglib&colnames=atschool&colnames=worklib&colnames=highedu&colnames=teagradu&colnames=teadepart&colnames=teacourse&colnames=teawordno&colnames=teamemo&colnames=teamobil&colnames=teasalary&colnames=schphone&colnames=schextn&colnames=place&colnames=nature&colnames=hpa&colnames=hpb&colnames=hpc&colnames=hpd&colnames=hpe&colnames=cpa&colnames=cpb&colnames=cpc&colnames=cpd&colnames=cpe&colnames=hpostal&colnames=cpostal&colnames=teaworddate&colnames=teaname_e&colnames=christic&datatrans=',
+            stream=True,
+            verify=False
+        )
+        return io.BytesIO(response.raw.read())
