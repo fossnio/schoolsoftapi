@@ -1,6 +1,7 @@
 '''介接全誼笑務系統'''
 
 import re
+import io
 import subprocess
 import tempfile
 import time
@@ -83,3 +84,17 @@ class SchoolSoftAPI:
         url = '{0}/jsp/tea_search/search_mix_s.jsp'.format(self.baseurl)
         data = 'x=16&y=11&ck1=1&teaname=&ck12=1&teaidno=&birthplace=&teaphone=&regstring=&ck14=1&teamail=&teaaddress=&teamobil=&ck5=1&ck6=1&birthyear=&birthmonth=&birthday=&birthyear1=&birthmonth1=&birthday1=&teachyear=&teachmonth=&teachday=&teachyear1=&teachmonth1=&teachday1=&reglib=0&work=0&highedu=0&teagradu='
         return self._get_data(url, data)
+
+    def _get_teacher_duties(self):
+        '''取得教師職務'''
+        self.session.get(
+            '{0}/jsp/people/teasrv_data.jsp?seyear={1}&sesem={2}'.format(self.baseurl, self.semester[:-1], self.semester[-1]),
+            verify=False
+        )
+        response = self.session.get(
+            '{0}/jsp/people/teasrv_destiny.jsp?filename=data.csv'.format(self.baseurl),
+            stream=True,
+            verify=False
+        )
+        return io.BytesIO(response.raw.read())
+
