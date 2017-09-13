@@ -63,7 +63,7 @@ class SchoolSoftAPI:
             else:
                 break
 
-    def _get_xls(self, url, data):
+    def _get_data(self, url, data):
         '''校務系統匯出檔案的一般化邏輯'''
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         response = self.session.post(url, data, stream=True, verify=False)
@@ -72,14 +72,14 @@ class SchoolSoftAPI:
         tmp_file.seek(0)
         return tmp_file
 
-    def _get_students_xls(self):
-        '''取得所有學生資料，原始格式為 xls'''
+    def _get_students_xml(self):
+        '''取得所有學生資料，原始格式為 xml'''
         url = '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl)
-        data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=excel&x=31&y=11&sql='.format(self.semester)
-        return self._get_xls(url, data)
+        data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=xml&x=31&y=11&sql='.format(self.semester)
+        return self._get_data(url, data)
 
-    def _get_teachers_xls(self):
-        '''取得所有老師資料，原始格式為 xls'''
-        url = '{0}/jsp/people/teaDataCsv.jsp'.format(self.baseurl)
-        data = 'username=&password=&chkall=on&colnames=idno&colnames=teaname&colnames=teasex&colnames=birthday&colnames=birthplace&colnames=teaphone&colnames=teamail&colnames=teamerrage&colnames=hanndy&colnames=teachdate&colnames=arrivedate&colnames=reglib&colnames=atschool&colnames=worklib&colnames=highedu&colnames=teagradu&colnames=teadepart&colnames=teacourse&colnames=teawordno&colnames=teamemo&colnames=teamobil&colnames=teasalary&colnames=schphone&colnames=schextn&colnames=place&colnames=nature&colnames=hpa&colnames=hpb&colnames=hpc&colnames=hpd&colnames=hpe&colnames=cpa&colnames=cpb&colnames=cpc&colnames=cpd&colnames=cpe&colnames=hpostal&colnames=cpostal&colnames=teaworddate&colnames=teaname_e&colnames=christic&datatrans='
-        return self._get_xls(url, data)
+    def _get_teachers_xml(self):
+        '''取得老師資訊，格式為 xml'''
+        url = '{0}/jsp/tea_search/search_mix_s.jsp'.format(self.baseurl)
+        data = 'x=16&y=11&ck1=1&teaname=&ck12=1&teaidno=&birthplace=&teaphone=&regstring=&ck14=1&teamail=&teaaddress=&teamobil=&ck5=1&ck6=1&birthyear=&birthmonth=&birthday=&birthyear1=&birthmonth1=&birthday1=&teachyear=&teachmonth=&teachday=&teachyear1=&teachmonth1=&teachday1=&reglib=0&work=0&highedu=0&teagradu='
+        return self._get_data(url, data)
