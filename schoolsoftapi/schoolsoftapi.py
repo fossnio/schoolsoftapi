@@ -64,8 +64,8 @@ class SchoolSoftAPI:
             else:
                 break
 
-    def _get_data(self, url, data):
-        '''校務系統匯出檔案的一般化邏輯'''
+    def _get_post_data(self, url, data):
+        '''校務系統通過 post 匯出檔案的一般化邏輯'''
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         response = self.session.post(url, data, stream=True, verify=False)
         tmp_file = tempfile.TemporaryFile()
@@ -77,13 +77,13 @@ class SchoolSoftAPI:
         '''取得所有學生資料，原始格式為 xml'''
         url = '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl)
         data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=xml&x=31&y=11&sql='.format(self.semester)
-        return self._get_data(url, data)
+        return self._get_post_data(url, data)
 
     def _get_teachers_xml(self):
         '''取得老師資訊，格式為 xml'''
         url = '{0}/jsp/tea_search/search_mix_s.jsp'.format(self.baseurl)
         data = 'x=16&y=11&ck1=1&teaname=&ck12=1&teaidno=&birthplace=&teaphone=&regstring=&ck14=1&teamail=&teaaddress=&teamobil=&ck5=1&ck6=1&birthyear=&birthmonth=&birthday=&birthyear1=&birthmonth1=&birthday1=&teachyear=&teachmonth=&teachday=&teachyear1=&teachmonth1=&teachday1=&reglib=0&work=0&highedu=0&teagradu='
-        return self._get_data(url, data)
+        return self._get_post_data(url, data)
 
     def _get_teacher_duties(self):
         '''取得教師職務'''
