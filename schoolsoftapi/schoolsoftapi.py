@@ -42,15 +42,15 @@ class SchoolSoftAPI:
 
                 self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True, verify=False)
 
-                # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得
+                # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
                 captcha_number = subprocess.Popen(
-                    ['tesseract', 'stdin', 'stdout'],
+                    ['tesseract', 'stdin', 'stdout', 'digits'],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE
                 ).communicate(self.response.raw.read())[0].decode('utf-8').strip()
 
-                # 必須是 5 個數字，否則重跑
-                if captcha_number and captcha_number.isdigit() and len(captcha_number) == 5:
+                # 辨識出的數字長度必須是 5 ，否則重跑
+                if captcha_number and len(captcha_number) == 5:
                     break
                 else:
                     time.sleep(1)
