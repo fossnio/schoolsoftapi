@@ -73,10 +73,10 @@ class SchoolSoftAPI:
         '''校務系統通過 post 匯出檔案的一般化邏輯'''
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         response = self.session.post(url, data, stream=True, verify=False)
-        tmp_file = tempfile.TemporaryFile()
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
         tmp_file.write(response.raw.read())
-        tmp_file.seek(0)
-        return tmp_file
+        tmp_file.close()
+        return tmp_file.name
 
     def _get_students_xls_file(self):
         '''取得所有學生資料，原始格式為 xls'''
