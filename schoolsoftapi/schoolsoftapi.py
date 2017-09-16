@@ -81,7 +81,7 @@ class SchoolSoftAPI:
     def _get_students_xls_file(self):
         '''取得所有學生資料，原始格式為 xls'''
         url = '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl)
-        data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=xml&x=31&y=11&sql='.format(self.semester)
+        data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=excel&x=31&y=11&sql='.format(self.semester)
         return self._get_post_data_file(url, data)
 
     def _get_teachers_xls_file(self):
