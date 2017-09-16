@@ -101,5 +101,5 @@ class SchoolSoftAPI:
             stream=True,
             verify=False
         )
-        return io.StringIO(response.raw.read().decode('cp950'))
+        return io.StringIO(response.raw.read().decode('utf-8'))
 
