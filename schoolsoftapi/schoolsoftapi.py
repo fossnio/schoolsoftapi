@@ -1,5 +1,6 @@
 '''介接全誼校務系統'''
 
+import os
 import re
 import io
 import subprocess
@@ -23,6 +24,7 @@ class SchoolSoftAPI:
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': '"Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0"'})
         self.response = None
+        self.students = None
 
     def login(self, retry=True, wait=300):
         '''登入校務系統'''
@@ -103,3 +105,30 @@ class SchoolSoftAPI:
         )
         return io.StringIO(response.raw.read().decode('utf-8'))
 
+    def _jsonify_students_xls_file(self):
+        '''將下載下來的學生 xls 取出需要的欄位轉成 json'''
+        import xlrd
+
+        xls_file = self._get_students_xls_file()
+        with xlrd.open_workbook(xls_file) as f:
+            sheet = f.sheet_by_index(0)
+            self.students = [
+                {
+                    # 學號
+                    'student_id': sheet.cell(i, 0).value,
+                    # 學生姓名
+                    'name': sheet.cell(i, 1).value,
+                    # 年級
+                    'grade': sheet.cell(i, 2).value,
+                    # 班級
+                    'class': sheet.cell(i, 3).value,
+                    # 生日
+                    'birthday': sheet.cell(i, 4).value,
+                    # 座號
+                    'seat_number': sheet.cell(i, 5).value,
+                    # 身份證字號
+                    'identify': sheet.cell(i, 6).value
+                } for i in range(1, sheet.nrows)
+            ]
+        os.unlink(xls_file)
+        return self.students
