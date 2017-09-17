@@ -138,7 +138,7 @@ class SchoolSoftAPI:
             ]
         os.unlink(xls_file)
         return self.students
-        
+
     def dump_teachers(self):
         '''將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構'''
         xls_file = self._get_teachers_xls_file()
