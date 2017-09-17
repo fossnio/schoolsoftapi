@@ -6,9 +6,11 @@ import io
 import subprocess
 import tempfile
 import time
+import csv
 from datetime import datetime
 
 import requests
+import xlrd
 
 
 class SchoolSoftAPI:
@@ -24,7 +26,8 @@ class SchoolSoftAPI:
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': '"Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0"'})
         self.response = None
-        self.students = None
+        self.students = []
+        self.teachers = []
 
     def login(self, retry=True, wait=300):
         '''登入校務系統'''
@@ -92,8 +95,9 @@ class SchoolSoftAPI:
         data = 'username=&password=&chkall=on&colnames=idno&colnames=teaname&colnames=teasex&colnames=birthday&colnames=birthplace&colnames=teaphone&colnames=teamail&colnames=teamerrage&colnames=hanndy&colnames=teachdate&colnames=arrivedate&colnames=reglib&colnames=atschool&colnames=worklib&colnames=highedu&colnames=teagradu&colnames=teadepart&colnames=teacourse&colnames=teawordno&colnames=teamemo&colnames=teamobil&colnames=teasalary&colnames=schphone&colnames=schextn&colnames=place&colnames=nature&colnames=hpa&colnames=hpb&colnames=hpc&colnames=hpd&colnames=hpe&colnames=cpa&colnames=cpb&colnames=cpc&colnames=cpd&colnames=cpe&colnames=hpostal&colnames=cpostal&colnames=teaworddate&colnames=teaname_e&colnames=christic&datatrans='
         return self._get_post_data_file(url, data)
 
-    def _get_teacher_duty_csv(self):
-        '''取得教師職務'''
+    def _get_teachers_job_info_csv(self):
+        '''取得教師職務，並轉化成 key 為身份證字號的資料結構以便於後續合併'''
+        teachers_job_info = {}
         self.session.get(
             '{0}/jsp/people/teasrv_data.jsp?seyear={1}&sesem={2}'.format(self.baseurl, self.semester[:-1], self.semester[-1]),
             verify=False
@@ -103,12 +107,14 @@ class SchoolSoftAPI:
             stream=True,
             verify=False
         )
-        return io.StringIO(response.raw.read().decode('utf-8'))
+        for row in csv.reader(io.StringIO(response.raw.read().decode('utf-8'))):
+            # 共五欄且第一欄為數字才處理
+            if len(row) == 5 and row[0].isdigit():
+                teachers_job_info[row[3]] = {'job_title': row[1], 'class': row[4]}
+        return teachers_job_info
 
-    def _jsonify_students_xls_file(self):
-        '''將下載下來的學生 xls 取出需要的欄位轉成 json'''
-        import xlrd
-
+    def dump_students(self):
+        '''將下載下來的學生 xls 取出需要的欄位轉成資料結構'''
         xls_file = self._get_students_xls_file()
         with xlrd.open_workbook(xls_file) as f:
             sheet = f.sheet_by_index(0)
@@ -119,16 +125,48 @@ class SchoolSoftAPI:
                     # 學生姓名
                     'name': sheet.cell(i, 1).value,
                     # 年級
-                    'grade': sheet.cell(i, 2).value,
+                    'grade': int(sheet.cell(i, 2).value),
                     # 班級
                     'class': sheet.cell(i, 3).value,
                     # 生日
-                    'birthday': sheet.cell(i, 4).value,
+                    'birthday': datetime.strptime(sheet.cell(i, 4).value, '%Y%m%d'),
                     # 座號
-                    'seat_number': sheet.cell(i, 5).value,
+                    'seat_number': int(sheet.cell(i, 5).value),
                     # 身份證字號
-                    'identify': sheet.cell(i, 6).value
+                    'identity': sheet.cell(i, 6).value
                 } for i in range(1, sheet.nrows)
             ]
         os.unlink(xls_file)
         return self.students
+        
+    def dump_teachers(self):
+        '''將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構'''
+        xls_file = self._get_teachers_xls_file()
+        job_info = self._get_teachers_job_info_csv()
+        with xlrd.open_workbook(xls_file) as f:
+            sheet = f.sheet_by_index(0)
+            for i in range(2, sheet.nrows):
+                # 將生日從民國轉成西元
+                birthday = '{0}{1}'.format(int(sheet.cell(i, 3).value[:-4]) + 1911, sheet.cell(i, 3).value[-4:])
+                teacher = {
+                    # 身份證字號
+                    'identity': sheet.cell(i, 0).value,
+                    # 教師姓名
+                    'name': sheet.cell(i, 1).value,
+                    # 性別
+                    'gender': sheet.cell(i, 2).value,
+                    # 生日
+                    'birthday': datetime.strptime(birthday, '%Y%m%d'),
+                    # 電子郵件
+                    'email': sheet.cell(i, 6).value,
+                    # 職稱
+                    'job_title': '',
+                    # 帶的班級
+                    'class': ''
+                }
+                if teacher['identity'] in job_info:
+                    teacher['job_title'] = job_info[teacher['identity']]['job_title']
+                    teacher['class'] = job_info[teacher['identity']]['class']
+                self.teachers.append(teacher)
+        os.unlink(xls_file)
+        return self.teachers
