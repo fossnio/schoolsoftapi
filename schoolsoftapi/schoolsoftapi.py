@@ -113,7 +113,18 @@ class SchoolSoftAPI:
                 teachers_job_info[row[3]] = {'job_title': row[1], 'class': row[4]}
         return teachers_job_info
 
-    def dump_students(self):
+    def _to_csv(self, headers, order, entities):
+        '''將傳入的資料結構 entities 轉成 csv 格式'''
+        csv_content = io.StringIO()
+        csv_writer = csv.writer(csv_content)
+        csv_writer.writerow(headers)
+        for entity in entities:
+            row = [entity[i].strftime('%Y%m%d') if isinstance(entity[i], datetime) else entity[i] for i in order]
+            csv_writer.writerow(row)
+        csv_content.seek(0)
+        return csv_content.read()
+
+    def dump_students(self, output_format='raw'):
         '''將下載下來的學生 xls 取出需要的欄位轉成資料結構'''
         xls_file = self._get_students_xls_file()
         with xlrd.open_workbook(xls_file) as f:
@@ -137,9 +148,16 @@ class SchoolSoftAPI:
                 } for i in range(1, sheet.nrows)
             ]
         os.unlink(xls_file)
-        return self.students
+        if output_format == 'csv':
+            return self._to_csv(
+                ['學號', '姓名', '年級', '班級', '生日', '座號', '身份證字號'],
+                ['student_id', 'name', 'grade', 'class', 'birthday', 'seat_number', 'identity'],
+                self.students
+            )
+        else:
+            return self.students
 
-    def dump_teachers(self):
+    def dump_teachers(self, output_format='raw'):
         '''將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構'''
         xls_file = self._get_teachers_xls_file()
         job_info = self._get_teachers_job_info_csv()
@@ -169,4 +187,11 @@ class SchoolSoftAPI:
                     teacher['class'] = job_info[teacher['identity']]['class']
                 self.teachers.append(teacher)
         os.unlink(xls_file)
-        return self.teachers
+        if output_format == 'csv':
+            return self._to_csv(
+                ['身份證字號', '姓名', '性別', '生日', '電子郵件', '職稱', '班級'],
+                ['identity', 'name', 'gender', 'birthday', 'email', 'job_title', 'class'],
+                self.teachers
+            )
+        else:
+            return self.teachers
