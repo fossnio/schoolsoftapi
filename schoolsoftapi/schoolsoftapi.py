@@ -24,6 +24,7 @@ class SchoolSoftAPI:
         self.semester = semester
         self.baseurl = baseurl
         self.session = requests.Session()
+        requests.packages.urllib3.disable_warnings()
         self.session.headers.update({'User-Agent': '"Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0"'})
         self.response = None
         self.students = []
@@ -32,12 +33,12 @@ class SchoolSoftAPI:
     def login(self, retry=True, wait=300):
         '''登入校務系統'''
 
-        self.session.get('{0}/index.jsp'.format(self.baseurl), verify=False)
-        self.session.post('{0}/login.jsp'.format(self.baseurl), data={'method': 'getLogin', 'auth_type': '', 'auth_role': '', 'showTitle': '0'}, verify=False)
+        self.session.get('{0}/index.jsp'.format(self.baseurl))
+        self.session.post('{0}/login.jsp'.format(self.baseurl), data={'method': 'getLogin', 'auth_type': '', 'auth_role': '', 'showTitle': '0'})
 
         # 重複跑直到 capcha 成功辨識出是 5 個數字（對錯不管）
         while retry:
-            self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl), verify=False)
+            self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl))
 
             # 取得 post 網址
             post_url = re.findall(r' action="(.+?)"', self.response.text)[0]
@@ -45,7 +46,7 @@ class SchoolSoftAPI:
             # 圖形認證碼下載並丟給 tesseract 直到辨認出是 5 個數字
             while True:
 
-                self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True, verify=False)
+                self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True)
 
                 # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
                 captcha_number = subprocess.Popen(
@@ -61,7 +62,7 @@ class SchoolSoftAPI:
                     time.sleep(1)
 
             # 認證
-            self.response = self.session.post('{0}{1}'.format(self.baseurl, post_url), data={'username': self.username, 'password': self.password, 'random_num': captcha_number}, verify=False)
+            self.response = self.session.post('{0}{1}'.format(self.baseurl, post_url), data={'username': self.username, 'password': self.password, 'random_num': captcha_number})
 
             if '登入失敗' in self.response.text:
                 # 等待，避開失敗 5 次被停權 15 分鐘的限制
@@ -77,7 +78,7 @@ class SchoolSoftAPI:
     def _get_post_data_file(self, url, data):
         '''校務系統通過 post 匯出檔案的一般化邏輯'''
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        response = self.session.post(url, data, stream=True, verify=False)
+        response = self.session.post(url, data, stream=True)
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
         tmp_file.write(response.raw.read())
         tmp_file.close()
