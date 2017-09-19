@@ -78,9 +78,9 @@ class SchoolSoftAPI:
     def _get_post_data_file(self, url, data):
         '''校務系統通過 post 匯出檔案的一般化邏輯'''
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        response = self.session.post(url, data, stream=True)
+        self.response = self.session.post(url, data, stream=True)
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        tmp_file.write(response.raw.read())
+        tmp_file.write(self.response.raw.read())
         tmp_file.close()
         return tmp_file.name
 
@@ -103,12 +103,12 @@ class SchoolSoftAPI:
             '{0}/jsp/people/teasrv_data.jsp?seyear={1}&sesem={2}'.format(self.baseurl, self.semester[:-1], self.semester[-1]),
             verify=False
         )
-        response = self.session.get(
+        self.response = self.session.get(
             '{0}/jsp/people/teasrv_destiny.jsp?filename=data.csv'.format(self.baseurl),
             stream=True,
             verify=False
         )
-        for row in csv.reader(io.StringIO(response.raw.read().decode('utf-8'))):
+        for row in csv.reader(io.StringIO(self.response.raw.read().decode('utf-8'))):
             # 共五欄且第一欄為數字才處理
             if len(row) == 5 and row[0].isdigit():
                 teachers_job_info[row[3]] = {'job_title': row[1], 'class': row[4]}
@@ -204,15 +204,15 @@ class SchoolSoftAPI:
         self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
 
         # 取得校務系統紀錄教師帳號的 key teaid
-        response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
-        re_result = re.search(r'''<font size="2"><a name='tea(\S+)'></a>{0}</font>'''.format(name), response.text)
+        self.response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
+        re_result = re.search(r'''<font size="2"><a name='tea(\S+)'></a>{0}</font>'''.format(name), self.response.text)
         schoolsoft_teaid= re_result.group(1)
 
         # 轉換生日成所需的格式
         schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
         schoolsoft_birthday2 = birthday.strftime('%Y%m%d')
 
-        response = self.session.post(
+        self.response = self.session.post(
             '{0}/jsp/people/teabasicdata_s.jsp'.format(self.baseurl),
             data={
                 'x': 11,
@@ -319,7 +319,7 @@ class SchoolSoftAPI:
             files={'teapic': ('', '')}
         )
         
-        return True if identity in response.text else False
+        return True if identity in self.response.text else False
 
     def add_teacher(self, identity, name, gender, birthday):
         '''新增教師'''
@@ -331,7 +331,7 @@ class SchoolSoftAPI:
         schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
         schoolsoft_birthday2 = birthday.strftime('%Y%m%d')
 
-        response = self.session.post(
+        self.response = self.session.post(
             '{0}/jsp/people/teabasicdata_s.jsp'.format(self.baseurl),
             data={
                 'x': 11,
@@ -436,4 +436,4 @@ class SchoolSoftAPI:
             files={'teapic': ('', '')}
         )
         
-        return True if identity in response.text else False
+        return True if identity in self.response.text else False
