@@ -196,3 +196,244 @@ class SchoolSoftAPI:
             )
         else:
             return self.teachers
+
+    def delete_teacher(self, identity, name, gender, birthday):
+        '''刪除教師'''
+
+        # 讓校務系統記住我們要存取哪個模組以免報錯
+        self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
+
+        # 取得校務系統紀錄教師帳號的 key teaid
+        response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
+        re_result = re.search(r'''<font size="2"><a name='tea(\S+)'></a>{0}</font>'''.format(name), response.text)
+        schoolsoft_teaid= re_result.group(1)
+
+        # 轉換生日成所需的格式
+        schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
+        schoolsoft_birthday2 = birthday.strftime('%Y%m%d')
+
+        response = self.session.post(
+            '{0}/jsp/people/teabasicdata_s.jsp'.format(self.baseurl),
+            data={
+                'x': 11,
+                'y': 10,
+                'teaname': '測試二',
+                'teasex': gender, # 1 是男生， 0 是女生
+                'teasexx': gender,
+                'teaBirthday1': schoolsoft_birthday1,
+                'teaBirthday2': schoolsoft_birthday2,
+                'work': 6, # 人事不管校務系統，所以統一設定為專任
+                'atschool': 0, # 0 代表離校
+                'teacourse': '',
+                'teawordno': '',
+                'teaWordDate11': '',
+                'teaWordDate1': '',
+                'teacourse2': '',
+                'teawordno2': '',
+                'teaWordDate22': '',
+                'teaWordDate2': '',
+                'teacourse3': '',
+                'teawordno3': '',
+                'teaWordDate33': '',
+                'teaWordDate3': '',
+                'teacourse4': '',
+                'teawordno4': '',
+                'teaWordDate44': '',
+                'teaWordDate4': '',
+                'teacourse5': '',
+                'teawordno5': '',
+                'teaWordDate55': '',
+                'teaWordDate5': '',
+                'teacourse6': '',
+                'teawordno6': '',
+                'teaWordDate66': '',
+                'teaWordDate6': '',
+                'teacourse7': '',
+                'teawordno7': '',
+                'teaWordDate77': '',
+                'teaWordDate7': '',
+                'teacourse8': '',
+                'teawordno8': '',
+                'teaWordDate88': '',
+                'teaWordDate8': '',
+                'teacourse9': '',
+                'teawordno9': '',
+                'teaWordDate99': '',
+                'teaWordDate9': '',
+                'teacourse10': '',
+                'teawordno10': '',
+                'teaWordDate1010': '',
+                'teaWordDate10': '',
+                'tai_date2': '',
+                'tai_date': '',
+                'tai_word': '',
+                'hak_date2': '',
+                'hak_date': '',
+                'hak_word': '',
+                'abo_date2': '',
+                'abo_date': '',
+                'abo_word': '',
+                'teamerrage': 0,
+                'hanndy': 0,
+                'place': '',
+                'nature': '',
+                'teamail': '',
+                'schphone': '',
+                'schextn': '',
+                'schfax': '',
+                'teaphone': '',
+                'teamobil': '',
+                'hpostal': '',
+                'hpa': '',
+                'hpb': '',
+                'hpc': '',
+                'hpd': '',
+                'hpe': '',
+                'cpostal': '',
+                'cpa': '',
+                'cpb': '',
+                'cpc': '',
+                'cpd': '',
+                'cpe': '',
+                'teaaddress': '',
+                'teaTeachDate1': '',
+                'teaTeachDate2': '',
+                'teaArriveDate1': '',
+                'teaArriveDate2': '',
+                'reglib': 0,
+                'birthplace': '',
+                'teasalary': '',
+                'highedu': '',
+                'teagradu': '',
+                'teadepart': '',
+                'teamemo': '',
+                'action': 'change',
+                'teaId': schoolsoft_teaid,
+                'teaidno': identity,
+                'seniority': '',
+                'chyear': '',
+                'real_seniority': '',
+                'my_check': 0,
+                'schoolNo': '',
+            },
+            files={'teapic': ('', '')}
+        )
+        
+        return True if identity in response.text else False
+
+    def add_teacher(self, identity, name, gender, birthday):
+        '''新增教師'''
+
+        # 讓校務系統記住我們要存取哪個模組以免報錯
+        self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
+
+        # 轉換生日成所需的格式
+        schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
+        schoolsoft_birthday2 = birthday.strftime('%Y%m%d')
+
+        response = self.session.post(
+            '{0}/jsp/people/teabasicdata_s.jsp'.format(self.baseurl),
+            data={
+                'x': 11,
+                'y': 10,
+                'people_type': '',
+                'teaidno': identity,
+                'teaname': name,
+                'teasex': gender, # 1 是男生， 0 是女生
+                'teaBirthday1': schoolsoft_birthday1,
+                'teaBirthday2': schoolsoft_birthday2,
+                'work': 6, # 人事不管校務系統，所以統一設定為專任
+                'atschool': 1, # 1 代表在校
+                'teacourse': '',
+                'teawordno': '',
+                'teaWordDate11': '',
+                'teaWordDate1': '',
+                'teacourse2': '',
+                'teawordno2': '',
+                'teaWordDate22': '',
+                'teaWordDate2': '',
+                'teacourse3': '',
+                'teawordno3': '',
+                'teaWordDate33': '',
+                'teaWordDate3': '',
+                'teacourse4': '',
+                'teawordno4': '',
+                'teaWordDate44': '',
+                'teaWordDate4': '',
+                'teacourse5': '',
+                'teawordno5': '',
+                'teaWordDate55': '',
+                'teaWordDate5': '',
+                'teacourse6': '',
+                'teawordno6': '',
+                'teaWordDate66': '',
+                'teaWordDate6': '',
+                'teacourse7': '',
+                'teawordno7': '',
+                'teaWordDate77': '',
+                'teaWordDate7': '',
+                'teacourse8': '',
+                'teawordno8': '',
+                'teaWordDate88': '',
+                'teaWordDate8': '',
+                'teacourse9': '',
+                'teawordno9': '',
+                'teaWordDate99': '',
+                'teaWordDate9': '',
+                'teacourse10': '',
+                'teawordno10': '',
+                'teaWordDate1010': '',
+                'teaWordDate10': '',
+                'tai_date2': '',
+                'tai_date': '',
+                'tai_word': '',
+                'hak_date2': '',
+                'hak_date': '',
+                'hak_word': '',
+                'abo_date2': '',
+                'abo_date': '',
+                'abo_word': '',
+                'teamerrage': 0,
+                'hanndy': 0,
+                'place': '',
+                'nature': '',
+                'teamail': '',
+                'schphone': '',
+                'schextn': '',
+                'schfax': '',
+                'teaphone': '',
+                'teamobil': '',
+                'hpostal': '',
+                'hpa': '',
+                'hpb': '',
+                'hpc': '',
+                'hpd': '',
+                'hpe': '',
+                'cpostal': '',
+                'cpa': '',
+                'cpb': '',
+                'cpc': '',
+                'cpd': '',
+                'cpe': '',
+                'teaaddress': '',
+                'teaTeachDate1': '',
+                'teaTeachDate2': '',
+                'teaArriveDate1': '',
+                'teaArriveDate2': '',
+                'reglib': 0,
+                'birthplace': '',
+                'teasalary': '',
+                'highedu': '',
+                'teagradu': '',
+                'teadepart': '',
+                'teamemo': '',
+                'action': 'add',
+                'seniority': '',
+                'chyear': '',
+                'real_seniority': '',
+                'schoolNo': '',
+            },
+            files={'teapic': ('', '')}
+        )
+        
+        return True if identity in response.text else False
