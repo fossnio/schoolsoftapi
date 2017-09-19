@@ -25,7 +25,7 @@ class SchoolSoftAPI:
         self.baseurl = baseurl
         self.session = requests.Session()
         requests.packages.urllib3.disable_warnings()
-        self.session.headers.update({'User-Agent': '"Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0"'})
+        self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0'})
         self.response = None
         self.students = []
         self.teachers = []
