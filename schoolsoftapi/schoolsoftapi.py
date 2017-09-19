@@ -68,12 +68,22 @@ class SchoolSoftAPI:
                 # 等待，避開失敗 5 次被停權 15 分鐘的限制
                 time.sleep(wait)
             else:
+                self._grant_admin_permission()
                 return True
 
             if retry is not True:
                 retry -= 1
                 if retry == 0:
                     return False
+
+    def _grant_admin_permission(self):
+        '''切換成資訊人員權限'''
+        self.response = self.session.get('{0}/Module_List.do'.format(self.baseurl))
+        grant_admin_link = re.search(
+            r'''onclick="location.href='/(Change_Auth.do\?pos_id=\w+&pid=\d+)'"> (?:資訊組長|系統管理師)</font>''',
+            self.response.text
+        ).group(1)
+        self.session.get('{0}/{1}'.format(self.baseurl, grant_admin_link))
 
     def _get_post_data_file(self, url, data):
         '''校務系統通過 post 匯出檔案的一般化邏輯'''
