@@ -36,45 +36,53 @@ class SchoolSoftAPI:
         self.session.get('{0}/index.jsp'.format(self.baseurl))
         self.session.post('{0}/login.jsp'.format(self.baseurl), data={'method': 'getLogin', 'auth_type': '', 'auth_role': '', 'showTitle': '0'})
 
-        # 重複跑直到 capcha 成功辨識出是 5 個數字（對錯不管）
-        while retry:
-            self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl))
-
-            # 取得 post 網址
-            post_url = re.findall(r' action="(.+?)"', self.response.text)[0]
-
-            # 圖形認證碼下載並丟給 tesseract 直到辨認出是 5 個數字
+        if self._login_with_captcha():
+            return True
+        else:
             while True:
-
-                self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True)
-
-                # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
-                captcha_number = subprocess.Popen(
-                    ['tesseract', 'stdin', 'stdout', 'digits'],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE
-                ).communicate(self.response.raw.read())[0].decode('utf-8').strip()
-
-                # 辨識出的數字長度必須是 5 ，否則重跑
-                if captcha_number and len(captcha_number) == 5:
-                    break
-                else:
-                    time.sleep(1)
-
-            # 認證
-            self.response = self.session.post('{0}{1}'.format(self.baseurl, post_url), data={'username': self.username, 'password': self.password, 'random_num': captcha_number})
-
-            if '登入失敗' in self.response.text:
-                # 等待，避開失敗 5 次被停權 15 分鐘的限制
+                if retry is not True:
+                    if retry > 0:
+                        retry -= 1
+                    else:
+                        return False
                 time.sleep(wait)
-            else:
-                self._grant_admin_permission()
-                return True
+                if self._login_with_captcha():
+                    return True
 
-            if retry is not True:
-                retry -= 1
-                if retry == 0:
-                    return False
+    def _login_with_captcha(self):
+        '''辨識 captcha 後送出認證並回傳登入結果'''
+
+        self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl))
+
+        # 取得 post 網址
+        post_url = re.findall(r' action="(.+?)"', self.response.text)[0]
+
+        # 圖形認證碼下載並丟給 tesseract 直到辨認出是 5 個數字
+        while True:
+
+            self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True)
+
+            # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
+            captcha_number = subprocess.Popen(
+                ['tesseract', 'stdin', 'stdout', 'digits'],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE
+            ).communicate(self.response.raw.read())[0].decode('utf-8').strip()
+
+            # 辨識出的數字長度必須是 5 ，否則重跑
+            if captcha_number and len(captcha_number) == 5:
+                break
+            else:
+                time.sleep(1)
+
+        # 認證
+        self.response = self.session.post('{0}{1}'.format(self.baseurl, post_url), data={'username': self.username, 'password': self.password, 'random_num': captcha_number})
+
+        if '登入失敗' in self.response.text:
+            return False
+        else:
+            self._grant_admin_permission()
+            return True
 
     def _grant_admin_permission(self):
         '''切換成資訊人員權限'''
@@ -445,5 +453,5 @@ class SchoolSoftAPI:
             },
             files={'teapic': ('', '')}
         )
-        
+
         return True if identity in self.response.text else False
