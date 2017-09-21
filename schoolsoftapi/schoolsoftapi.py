@@ -88,7 +88,7 @@ class SchoolSoftAPI:
         '''切換成資訊人員權限'''
         self.response = self.session.get('{0}/Module_List.do'.format(self.baseurl))
         grant_admin_link = re.search(
-            r'''onclick="location.href='/(Change_Auth.do\?pos_id=\w+&pid=\d+)'"> (?:資訊組長|系統管理師)</font>''',
+            r'''onclick="location\.href='/(Change_Auth\.do\?pos_id=\w+&pid=\d+)'"> (?:資訊組長|系統管理師)</font>''',
             self.response.text
         ).group(1)
         self.session.get('{0}/{1}'.format(self.baseurl, grant_admin_link))
@@ -232,7 +232,7 @@ class SchoolSoftAPI:
                     '{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl),
                     data={'teaId': schoolsoft_teaid, 'search1': '', 'nschtype': ''}
                 )
-                re_identity = re.search(r'"passwd2.jsp?idno=(\w+)', self.response.text)
+                re_identity = re.search(r'"passwd2\.jsp\?idno=(\w+)', self.response.text)
                 if re_identity and re_identity.group(1) == identity:
                     return schoolsoft_teaid
         else:
@@ -475,3 +475,22 @@ class SchoolSoftAPI:
         )
 
         return True if identity in self.response.text else False
+
+    def reset_teacher_password(self, identity, name):
+        '''重設教師密碼'''
+        self._change_to_personnel_module()
+        teaid = self._find_teacher_teaid(identity, name)
+        if teaid:
+            self.response = self.session.post(
+                '{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl),
+                data={'teaId': teaid, 'search1': '', 'nschtype': ''}
+            )
+            re_result = re.search(r'change_pw\.jsp\?idno=\w+', self.response.text)
+            # 變更密碼
+            self.session.get('{0}/jsp/people/{1}'.format(self.baseurl, re_result.group(0)))
+            # 再連一次一樣的網址給予一樣的參數，會告知密碼已變更
+            self.response = self.session.get('{0}/jsp/people/{1}'.format(self.baseurl, re_result.group(0)))
+            if '密碼變更完成' in self.response.text:
+                return True
+        else:
+            return False
