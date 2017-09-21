@@ -30,7 +30,7 @@ class SchoolSoftAPI:
         self.students = []
         self.teachers = []
 
-    def login(self, retry=True, wait=300):
+    def login(self, retry=True, wait=30):
         '''登入校務系統'''
 
         self.session.get('{0}/index.jsp'.format(self.baseurl))
