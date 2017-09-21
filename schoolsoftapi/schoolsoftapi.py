@@ -215,16 +215,37 @@ class SchoolSoftAPI:
         else:
             return self.teachers
 
-    def delete_teacher(self, identity, name, gender, birthday):
-        '''刪除教師'''
-
-        # 讓校務系統記住我們要存取哪個模組以免報錯
+    def _change_to_personnel_module(self):
+        '''切換至人事系統'''
         self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
 
-        # 取得校務系統紀錄教師帳號的 key teaid
+    def _find_teacher_teaid(self, identity, name):
+        '''考量可能會發生同名的狀況，要額外確認身份證是相符的才回傳 teaid'''
+
         self.response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
-        re_result = re.search(r'''<font size="2"><a name='tea(\S+)'></a>{0}</font>'''.format(name), self.response.text)
-        schoolsoft_teaid= re_result.group(1)
+        re_result = re.finditer(r'''<font size="\d+"><a name='tea(\w+)'></a>{0}</font>'''.format(name), self.response.text)
+        if re_result:
+            # 因為校務系統網頁的設計，光靠名稱找 teaid 是不可靠的，比如同名狀況。因此要額外去另一個網頁確認身份證字號是相符的
+            for each_result in re_result:
+                schoolsoft_teaid= each_result.group(1)
+                self.response = self.session.post(
+                    '{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl),
+                    data={'teaId': schoolsoft_teaid, 'search1': '', 'nschtype': ''}
+                )
+                re_identity = re.search(r'"passwd2.jsp?idno=(\w+)', self.response.text)
+                if re_identity and re_identity.group(1) == identity:
+                    return schoolsoft_teaid
+        else:
+            return None
+
+    def delete_teacher(self, identity, name, gender, birthday):
+        '''刪除教師，根據測試，應該只要提供身份證字號就可刪除，但為了完整性還是模擬送出所有欄位'''
+
+        # 讓校務系統記住我們要存取哪個模組以免報錯
+        self._change_to_personnel_module()
+
+        # 取得校務系統紀錄教師帳號的 key teaid
+        schoolsoft_teaid = self._find_teacher_teaid(identity, name)
 
         # 轉換生日成所需的格式
         schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
@@ -337,14 +358,13 @@ class SchoolSoftAPI:
             files={'teapic': ('', '')}
         )
         
-        return True if identity in self.response.text else False
+        return True if '基本資料' in self.response.text else False
 
     def add_teacher(self, identity, name, gender, birthday):
         '''新增教師'''
 
         # 讓校務系統記住我們要存取哪個模組以免報錯
-        self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
-
+        self._change_to_personnel_module()
         # 轉換生日成所需的格式
         schoolsoft_birthday1 = '{0}/{1}'.format(int(birthday.strftime('%Y')) - 1911, birthday.strftime('%m/%d'))
         schoolsoft_birthday2 = birthday.strftime('%Y%m%d')
