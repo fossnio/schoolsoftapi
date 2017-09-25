@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="schoolsoftapi",
-    version="0.3dev",
+    version="0.0.3.dev1",
     packages=find_packages(),
     install_requires=['requests', 'xlrd'],
     description="SchooSoft API",
