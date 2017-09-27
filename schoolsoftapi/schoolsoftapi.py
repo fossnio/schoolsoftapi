@@ -181,7 +181,7 @@ class SchoolSoftAPI:
                     )
         except ValueError as e:
             print('解析學生 xls 錯誤，請檢查格式是否正確')
-            print('傾印目前學生資訊如下：')
+            print('傾印目前學生資訊原始格式如下：')
             pprint(
                 {
                     'student_id': sheet.cell(i, 0).value,
@@ -237,7 +237,7 @@ class SchoolSoftAPI:
                     self.teachers.append(teacher)
         except ValueError:
             print('解析教師 csv 錯誤，請檢查格式是否正確')
-            print('傾印目前教師資訊如下：')
+            print('傾印目前教師資訊原始格式如下：')
             pprint(
                 {
                     'identity': sheet.cell(i, 0).value,
