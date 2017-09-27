@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 import csv
+from pprint import pprint
 from datetime import datetime
 
 import requests
@@ -146,27 +147,46 @@ class SchoolSoftAPI:
     def dump_students(self, output_format='raw'):
         '''將下載下來的學生 xls 取出需要的欄位轉成資料結構'''
         xls_file = self._get_students_xls_file()
-        with xlrd.open_workbook(xls_file) as f:
-            sheet = f.sheet_by_index(0)
-            self.students = [
+        self.students.clear()
+        try:
+            with xlrd.open_workbook(xls_file) as f:
+                sheet = f.sheet_by_index(0)
+                for i in range(1, sheet.nrows):
+                    self.students.append(
+                        {
+                            # 學號
+                            'student_id': sheet.cell(i, 0).value,
+                            # 學生姓名
+                            'name': sheet.cell(i, 1).value,
+                            # 年級
+                            'grade': int(sheet.cell(i, 2).value),
+                            # 班級
+                            'class': sheet.cell(i, 3).value,
+                            # 生日
+                            'birthday': datetime.strptime(sheet.cell(i, 4).value, '%Y%m%d'),
+                            # 座號
+                            'seat_number': int(sheet.cell(i, 5).value),
+                            # 身份證字號
+                            'identity': sheet.cell(i, 6).value
+                        }
+                    )
+        except ValueError as e:
+            print('解析學生 xls 錯誤，請檢查格式是否正確')
+            print('傾印目前學生資訊如下：')
+            pprint(
                 {
-                    # 學號
                     'student_id': sheet.cell(i, 0).value,
-                    # 學生姓名
                     'name': sheet.cell(i, 1).value,
-                    # 年級
-                    'grade': int(sheet.cell(i, 2).value),
-                    # 班級
+                    'grade': sheet.cell(i, 2).value,
                     'class': sheet.cell(i, 3).value,
-                    # 生日
-                    'birthday': datetime.strptime(sheet.cell(i, 4).value, '%Y%m%d'),
-                    # 座號
-                    'seat_number': int(sheet.cell(i, 5).value),
-                    # 身份證字號
+                    'birthday': sheet.cell(i, 4).value,
+                    'seat_number': sheet.cell(i, 5).value,
                     'identity': sheet.cell(i, 6).value
-                } for i in range(1, sheet.nrows)
-            ]
-        os.unlink(xls_file)
+                }
+            )
+            raise
+        finally:
+            os.unlink(xls_file)
         if output_format == 'csv':
             return self._to_csv(
                 ['學號', '姓名', '年級', '班級', '生日', '座號', '身份證字號'],
