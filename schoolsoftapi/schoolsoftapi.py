@@ -28,6 +28,7 @@ class SchoolSoftAPI:
         requests.packages.urllib3.disable_warnings()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0'})
         self.response = None
+        self.response_raw = None
         self.students = []
         self.teachers = []
 
@@ -64,11 +65,12 @@ class SchoolSoftAPI:
             self.response = self.session.get('{0}/RandomNum?t={1}'.format(self.baseurl, int(datetime.now().timestamp() * 1000)), stream=True)
 
             # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
+            self.response_raw = self.response.raw.read()
             captcha_number = subprocess.Popen(
                 ['tesseract', 'stdin', 'stdout', 'digits'],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE
-            ).communicate(self.response.raw.read())[0].decode('utf-8').strip()
+            ).communicate(self.response_raw)[0].decode('utf-8').strip()
 
             # 辨識出的數字長度必須是 5 ，否則重跑
             if captcha_number and len(captcha_number) == 5:
@@ -99,7 +101,8 @@ class SchoolSoftAPI:
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         self.response = self.session.post(url, data, stream=True)
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        tmp_file.write(self.response.raw.read())
+        self.response_raw = self.response.raw.read()
+        tmp_file.write(self.response_raw)
         tmp_file.close()
         return tmp_file.name
 
@@ -127,7 +130,13 @@ class SchoolSoftAPI:
             stream=True,
             verify=False
         )
-        for row in csv.reader(io.StringIO(self.response.raw.read().decode('utf-8'))):
+        self.response_raw = self.response.raw.read()
+        try:
+            csv_stringio = io.StringIO(self.response_raw.decode('utf-8'))
+        except UnicodeDecodeError:
+            # 有的學校吐出來的 csv 不是 utf-8 而是 big5
+            csv_stringio = io.StringIO(self.response_raw.decode('cp950'))
+        for row in csv.reader(csv_stringio):
             # 共五欄且第一欄為數字才處理
             if len(row) == 5 and row[0].isdigit():
                 teachers_job_info[row[3]] = {'job_title': row[1], 'class': row[4]}
@@ -200,32 +209,49 @@ class SchoolSoftAPI:
         '''將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構'''
         xls_file = self._get_teachers_xls_file()
         job_info = self._get_teachers_job_info_csv()
-        with xlrd.open_workbook(xls_file) as f:
-            sheet = f.sheet_by_index(0)
-            for i in range(2, sheet.nrows):
-                # 將生日從民國轉成西元
-                birthday = '{0}{1}'.format(int(sheet.cell(i, 3).value[:-4]) + 1911, sheet.cell(i, 3).value[-4:])
-                teacher = {
-                    # 身份證字號
+        try:
+            with xlrd.open_workbook(xls_file) as f:
+                sheet = f.sheet_by_index(0)
+                for i in range(2, sheet.nrows):
+                    # 將生日從民國轉成西元
+                    birthday = '{0}{1}'.format(int(sheet.cell(i, 3).value[:-4]) + 1911, sheet.cell(i, 3).value[-4:])
+                    teacher = {
+                        # 身份證字號
+                        'identity': sheet.cell(i, 0).value,
+                        # 教師姓名
+                        'name': sheet.cell(i, 1).value,
+                        # 性別
+                        'gender': sheet.cell(i, 2).value,
+                        # 生日
+                        'birthday': datetime.strptime(birthday, '%Y%m%d'),
+                        # 電子郵件
+                        'email': sheet.cell(i, 6).value,
+                        # 職稱
+                        'job_title': '',
+                        # 帶的班級
+                        'class': ''
+                    }
+                    if teacher['identity'] in job_info:
+                        teacher['job_title'] = job_info[teacher['identity']]['job_title']
+                        teacher['class'] = job_info[teacher['identity']]['class']
+                    self.teachers.append(teacher)
+        except ValueError:
+            print('解析教師 csv 錯誤，請檢查格式是否正確')
+            print('傾印目前教師資訊如下：')
+            pprint(
+                {
                     'identity': sheet.cell(i, 0).value,
-                    # 教師姓名
                     'name': sheet.cell(i, 1).value,
-                    # 性別
                     'gender': sheet.cell(i, 2).value,
-                    # 生日
-                    'birthday': datetime.strptime(birthday, '%Y%m%d'),
-                    # 電子郵件
+                    'birthday': sheet.cell(i, 3).value,
                     'email': sheet.cell(i, 6).value,
-                    # 職稱
-                    'job_title': '',
-                    # 帶的班級
-                    'class': ''
+                    'job_title': job_info[teacher['identity']]['job_title'],
+                    'class': job_info[teacher['identity']]['class']
                 }
-                if teacher['identity'] in job_info:
-                    teacher['job_title'] = job_info[teacher['identity']]['job_title']
-                    teacher['class'] = job_info[teacher['identity']]['class']
-                self.teachers.append(teacher)
-        os.unlink(xls_file)
+            )
+            raise
+        finally:
+            os.unlink(xls_file)
         if output_format == 'csv':
             return self._to_csv(
                 ['身份證字號', '姓名', '性別', '生日', '電子郵件', '職稱', '班級'],
