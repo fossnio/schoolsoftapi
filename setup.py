@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=['requests', 'xlrd'],
     description="SchooSoft API",
-    long_description=open('README.txt').read(),
+    long_description=open('README.rst').read(),
     author="William Wu",
     author_email="william@pylabs.org",
     url="https://github.com/fossnio/schoolsoftapi",
