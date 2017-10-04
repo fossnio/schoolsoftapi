@@ -6,6 +6,9 @@
 Welcome to SchoolSoftAPI's documentation!
 =========================================
 
+.. toctree::
+
+   quickstart
 
 .. automodule:: schoolsoftapi
    :members:
