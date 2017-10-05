@@ -12,6 +12,10 @@ from datetime import datetime
 
 import requests
 import xlrd
+from pkg_resources import get_distribution
+
+
+__version__ = get_distribution('schoolsoftapi').version
 
 
 class SchoolSoftAPI:
