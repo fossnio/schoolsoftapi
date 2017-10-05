@@ -13,3 +13,4 @@ pylint = "*"
 ipython = "*"
 pytest = "*"
 sphinx = "*"
+"e1839a8" = {editable = true, path = "."}
