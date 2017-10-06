@@ -24,6 +24,8 @@ __version__ = get_distribution('schoolsoftapi').version
 class SchoolSoftAPI:
     """透過 WEB UI 介接全誼校務系統的 API"""
 
+    GENDER_MAPPING = {'男': 1, '女': 0}
+
     def __init__(self, username, password, semester, baseurl='https://eschool.tp.edu.tw'):
         """初始化物件
         
@@ -378,7 +380,7 @@ class SchoolSoftAPI:
         Args:
             identity (str): 身份證字號或護照號碼
             name (str): 姓名
-            gender (int): 性別
+            gender (str): 性別，'男' 或 '女'
             birthday (datetime): 生日
         
         Returns:
@@ -401,8 +403,8 @@ class SchoolSoftAPI:
                 'x': 11,
                 'y': 10,
                 'teaname': '測試二',
-                'teasex': gender, # 1 是男生， 0 是女生
-                'teasexx': gender,
+                'teasex': SchoolSoftAPI.GENDER_MAPPING[gender],
+                'teasexx': SchoolSoftAPI.GENDER_MAPPING[gender],
                 'teaBirthday1': schoolsoft_birthday1,
                 'teaBirthday2': schoolsoft_birthday2,
                 'work': 6, # 人事不管校務系統，所以統一設定為專任
@@ -510,7 +512,7 @@ class SchoolSoftAPI:
         Args:
             identity (str): 身份證字號或護照號碼
             name (str): 姓名
-            gender (int): 性別
+            gender (str): 性別，'男' 或 '女'
             birthday (datetime): 生日
         
         Returns:
@@ -531,7 +533,7 @@ class SchoolSoftAPI:
                 'people_type': '',
                 'teaidno': identity,
                 'teaname': name,
-                'teasex': gender, # 1 是男生， 0 是女生
+                'teasex': SchoolSoftAPI.GENDER_MAPPING[gender],
                 'teaBirthday1': schoolsoft_birthday1,
                 'teaBirthday2': schoolsoft_birthday2,
                 'work': 6, # 人事不管校務系統，所以統一設定為專任
