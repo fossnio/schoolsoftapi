@@ -22,10 +22,10 @@ __version__ = get_distribution('schoolsoftapi').version
 
 
 class SchoolSoftAPI:
-    '''透過 WEBUI 介接全誼校務系統'''
+    """透過 WEBUI 介接全誼校務系統"""
 
     def __init__(self, username, password, semester, baseurl='https://eschool.tp.edu.tw'):
-        '''初始化'''
+        """初始化"""
 
         self.username = username
         self.password = password
@@ -40,7 +40,7 @@ class SchoolSoftAPI:
         self.teachers = []
 
     def login(self, retry=True, wait=30):
-        '''登入校務系統'''
+        """登入校務系統"""
 
         self.session.get('{0}/index.jsp'.format(self.baseurl))
         self.session.post('{0}/login.jsp'.format(self.baseurl), data={'method': 'getLogin', 'auth_type': '', 'auth_role': '', 'showTitle': '0'})
@@ -59,7 +59,7 @@ class SchoolSoftAPI:
                     return True
 
     def _login_with_captcha(self):
-        '''辨識 captcha 後送出認證並回傳登入結果'''
+        """辨識 captcha 後送出認證並回傳登入結果"""
 
         self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl))
 
@@ -95,7 +95,7 @@ class SchoolSoftAPI:
             return True
 
     def _grant_admin_permission(self):
-        '''切換成資訊人員權限'''
+        """切換成資訊人員權限"""
         self.response = self.session.get('{0}/Module_List.do'.format(self.baseurl))
         grant_admin_link = re.search(
             r'''onclick="location\.href='/(Change_Auth\.do\?pos_id=\w+&pid=\d+)'"> (?:資訊組長|系統管理師)</font>''',
@@ -104,7 +104,7 @@ class SchoolSoftAPI:
         self.session.get('{0}/{1}'.format(self.baseurl, grant_admin_link))
 
     def _get_post_data_file(self, url, data):
-        '''校務系統通過 post 匯出檔案的一般化邏輯'''
+        """校務系統通過 post 匯出檔案的一般化邏輯"""
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         self.response = self.session.post(url, data, stream=True)
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -114,19 +114,19 @@ class SchoolSoftAPI:
         return tmp_file.name
 
     def _get_students_xls_file(self):
-        '''取得所有學生資料，原始格式為 xls'''
+        """取得所有學生資料，原始格式為 xls"""
         url = '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl)
         data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=excel&x=31&y=11&sql='.format(self.semester)
         return self._get_post_data_file(url, data)
 
     def _get_teachers_xls_file(self):
-        '''取得所有老師資料，原始格式為 xls'''
+        """取得所有老師資料，原始格式為 xls"""
         url = '{0}/jsp/people/teaDataCsv.jsp'.format(self.baseurl)
         data = 'username=&password=&chkall=on&colnames=idno&colnames=teaname&colnames=teasex&colnames=birthday&colnames=birthplace&colnames=teaphone&colnames=teamail&colnames=teamerrage&colnames=hanndy&colnames=teachdate&colnames=arrivedate&colnames=reglib&colnames=atschool&colnames=worklib&colnames=highedu&colnames=teagradu&colnames=teadepart&colnames=teacourse&colnames=teawordno&colnames=teamemo&colnames=teamobil&colnames=teasalary&colnames=schphone&colnames=schextn&colnames=place&colnames=nature&colnames=hpa&colnames=hpb&colnames=hpc&colnames=hpd&colnames=hpe&colnames=cpa&colnames=cpb&colnames=cpc&colnames=cpd&colnames=cpe&colnames=hpostal&colnames=cpostal&colnames=teaworddate&colnames=teaname_e&colnames=christic&datatrans='
         return self._get_post_data_file(url, data)
 
     def _get_teachers_job_info_csv(self):
-        '''取得教師職務，並轉化成 key 為身份證字號的資料結構以便於後續合併'''
+        """取得教師職務，並轉化成 key 為身份證字號的資料結構以便於後續合併"""
         teachers_job_info = {}
         self.session.get(
             '{0}/jsp/people/teasrv_data.jsp?seyear={1}&sesem={2}'.format(self.baseurl, self.semester[:-1], self.semester[-1]),
@@ -150,7 +150,7 @@ class SchoolSoftAPI:
         return teachers_job_info
 
     def _to_csv(self, headers, order, entities):
-        '''將傳入的資料結構 entities 轉成 csv 格式'''
+        """將傳入的資料結構 entities 轉成 csv 格式"""
         csv_content = io.StringIO()
         csv_writer = csv.writer(csv_content)
         csv_writer.writerow(headers)
@@ -161,7 +161,7 @@ class SchoolSoftAPI:
         return csv_content.read()
 
     def dump_students(self, output_format='raw'):
-        '''將下載下來的學生 xls 取出需要的欄位轉成資料結構'''
+        """將下載下來的學生 xls 取出需要的欄位轉成資料結構"""
         xls_file = self._get_students_xls_file()
         self.students.clear()
         try:
@@ -213,7 +213,7 @@ class SchoolSoftAPI:
             return self.students
 
     def dump_teachers(self, output_format='raw'):
-        '''將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構'''
+        """將下載下來的教師 xls 取出需要的欄位並對照職稱 csv 內容轉成資料結構"""
         xls_file = self._get_teachers_xls_file()
         job_info = self._get_teachers_job_info_csv()
         try:
@@ -269,11 +269,11 @@ class SchoolSoftAPI:
             return self.teachers
 
     def _change_to_personnel_module(self):
-        '''切換至人事系統'''
+        """切換至人事系統"""
         self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
 
     def _find_teacher_teaid(self, identity, name):
-        '''考量可能會發生同名的狀況，要額外確認身份證是相符的才回傳 teaid'''
+        """考量可能會發生同名的狀況，要額外確認身份證是相符的才回傳 teaid"""
 
         self.response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
         re_result = re.finditer(r'''<font size="\d+"><a name='tea(\w+)'></a>{0}</font>'''.format(name), self.response.text)
@@ -292,7 +292,7 @@ class SchoolSoftAPI:
             return None
 
     def delete_teacher(self, identity, name, gender, birthday):
-        '''刪除教師，根據測試，應該只要提供身份證字號就可刪除，但為了完整性還是模擬送出所有欄位'''
+        """刪除教師，根據測試，應該只要提供身份證字號就可刪除，但為了完整性還是模擬送出所有欄位"""
 
         # 讓校務系統記住我們要存取哪個模組以免報錯
         self._change_to_personnel_module()
@@ -414,7 +414,7 @@ class SchoolSoftAPI:
         return True if '基本資料' in self.response.text else False
 
     def add_teacher(self, identity, name, gender, birthday):
-        '''新增教師'''
+        """新增教師"""
 
         # 讓校務系統記住我們要存取哪個模組以免報錯
         self._change_to_personnel_module()
@@ -530,7 +530,7 @@ class SchoolSoftAPI:
         return True if identity in self.response.text else False
 
     def reset_teacher_password(self, identity, name):
-        '''重設教師密碼'''
+        """重設教師密碼"""
         self._change_to_personnel_module()
         teaid = self._find_teacher_teaid(identity, name)
         if teaid:
