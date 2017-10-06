@@ -1,4 +1,7 @@
-'''介接全誼校務系統'''
+# This program is released under license GPL v3,
+# see LICENSE.rst for more details.
+# Copyright 2017 FOSS Ninja
+"""全誼校務系統非官方 API"""
 
 import os
 import re
