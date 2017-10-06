@@ -43,9 +43,9 @@ Python 套件
     # 傾印教師資料含職務
     api.dump_teachers()
     # 新增教師帳號
-    api.add_teacher('教師身份證字號', '教師姓名', 1, datetime.now())
+    api.add_teacher('K123456789', '王大明', '男', datetime.now())
     # 重設教師密碼
-    api.reset_teacher_password('教師身份證字號', '教師姓名')
+    api.reset_teacher_password('K123456789', '王大明')
     # 刪除教師教師帳號
-    api.delete_teacher('教師身份證字號', '教師姓名', 1, datetime.now())
+    api.delete_teacher('K123456789', '王大明', '男', datetime.now())
 

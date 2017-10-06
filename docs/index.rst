@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SchoolSoftAPI's documentation!
+歡迎來到 SchoolSoftAPI 文件網站
 =========================================
 
 .. toctree::
@@ -15,7 +15,7 @@ Welcome to SchoolSoftAPI's documentation!
 
 
 
-Indices and tables
+索引與表格
 ==================
 
 * :ref:`genindex`
