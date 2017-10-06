@@ -6,10 +6,7 @@
 歡迎來到 SchoolSoftAPI 文件網站
 =========================================
 
-.. toctree::
-   :maxdepth: 3
-
-   quickstart
+.. include:: quickstart.rst
 
 .. automodule:: schoolsoftapi
    :members:
