@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import time
 import csv
-from pprint import pprint
+import logging
 from datetime import datetime
 
 import requests
@@ -26,7 +26,7 @@ class SchoolSoftAPI:
 
     GENDER_MAPPING = {'男': 1, '女': 0}
 
-    def __init__(self, username, password, semester, baseurl='https://eschool.tp.edu.tw'):
+    def __init__(self, username, password, semester, baseurl='https://eschool.tp.edu.tw', logger=None):
         """初始化物件
         
         Args:
@@ -34,12 +34,14 @@ class SchoolSoftAPI:
             password (str): 密碼
             semester (str): 學年度與學期，比如 106 學年度第 1 學期其值則為 '1061'
             baseurl (str): 校務系統網址
+            logger (logging.Logger): logger 物件
         """
 
         self.username = username
         self.password = password
         self.semester = semester
         self.baseurl = baseurl
+        self.logger = logger if logger else logging.getLogger(__name__)
         self.session = requests.Session()
         requests.packages.urllib3.disable_warnings()
         self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:55.0) Gecko/20100101 Firefox/55.0'})
@@ -64,6 +66,7 @@ class SchoolSoftAPI:
             bool: 若成功登入則傳回 True，否則傳回 False
         """
 
+        self.logger.debug('使用帳號 %s 密碼 %s 登入', self.username, self.password)
         self.session.get('{0}/index.jsp'.format(self.baseurl))
         self.session.post('{0}/login.jsp'.format(self.baseurl), data={'method': 'getLogin', 'auth_type': '', 'auth_role': '', 'showTitle': '0'})
 
@@ -87,6 +90,7 @@ class SchoolSoftAPI:
             bool: 登入成功傳回 True，否則傳回 False
         """
 
+        self.logger.debug('開始處理 captcha')
         self.response = self.session.get('{0}/web-sso/rest/Redirect/login/page/normal?returnUrl={0}/WebAuth.do'.format(self.baseurl))
 
         # 取得 post 網址
@@ -99,29 +103,36 @@ class SchoolSoftAPI:
 
             # 抓回來的圖直接丟入 tesseract-ocr，並將結果從 stdout 取得(指定只辨識數字)
             self.response_raw = self.response.raw.read()
+            self.logger.debug('呼叫 tesseract 處理 captcha')
             captcha_number = subprocess.Popen(
                 ['tesseract', 'stdin', 'stdout', 'digits'],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE
             ).communicate(self.response_raw)[0].decode('utf-8').strip()
+            self.logger.debug('辨識 captcha 結果為： %s', captcha_number)
 
             # 辨識出的數字長度必須是 5 ，否則重跑
             if captcha_number and len(captcha_number) == 5:
                 break
             else:
+                self.logger.debug('辨識失敗，重新辨識')
                 time.sleep(1)
 
         # 認證
+        self.logger.debug('完成辨識，不確定結果是否正確，嘗試登入')
         self.response = self.session.post('{0}{1}'.format(self.baseurl, post_url), data={'username': self.username, 'password': self.password, 'random_num': captcha_number})
 
         if '登入失敗' in self.response.text:
+            self.logger.info('登入失敗')
             return False
         else:
+            self.logger.info('登入成功')
             self._grant_admin_permission()
             return True
 
     def _grant_admin_permission(self):
         """切換成資訊人員權限"""
+        self.logger.debug('取得資訊人員權限')
         self.response = self.session.get('{0}/Module_List.do'.format(self.baseurl))
         grant_admin_link = re.search(
             r'''onclick="location\.href='/(Change_Auth\.do\?pos_id=\w+&pid=\d+)'"> (?:資訊組長|系統管理師)</font>''',
@@ -145,6 +156,7 @@ class SchoolSoftAPI:
         self.response_raw = self.response.raw.read()
         tmp_file.write(self.response_raw)
         tmp_file.close()
+        self.logger.debug('POST 取得資料已存至 %s', tmp_file.name)
         return tmp_file.name
 
     def _get_students_xls_file(self):
@@ -153,6 +165,7 @@ class SchoolSoftAPI:
         Returns:
             bytes: xls 二進位格式內容
         """
+        self.logger.debug('取得學生資料 xls 格式')
         url = '{0}/jsp/std_search/search_r.jsp'.format(self.baseurl)
         data = 'selsyse={0}&syse={0}&VIEW=student.stdno&VIEW=student.name&VIEW=student.year%7C%7Cstudent.classno+as+classid&sex=1&blood=A&VIEW=student.birthday&view_birthday=1&christic=01&VIEW=student.no&VIEW=student.idno&flife=0&mlife=0&slife=0&submit_type=excel&x=31&y=11&sql='.format(self.semester)
         return self._get_post_data_file(url, data)
@@ -163,6 +176,7 @@ class SchoolSoftAPI:
         Returns:
             bytes: xls 二進位格式內容
         """
+        self.logger.debug('取得老師資料 xls 格式')
         url = '{0}/jsp/people/teaDataCsv.jsp'.format(self.baseurl)
         data = 'username=&password=&chkall=on&colnames=idno&colnames=teaname&colnames=teasex&colnames=birthday&colnames=birthplace&colnames=teaphone&colnames=teamail&colnames=teamerrage&colnames=hanndy&colnames=teachdate&colnames=arrivedate&colnames=reglib&colnames=atschool&colnames=worklib&colnames=highedu&colnames=teagradu&colnames=teadepart&colnames=teacourse&colnames=teawordno&colnames=teamemo&colnames=teamobil&colnames=teasalary&colnames=schphone&colnames=schextn&colnames=place&colnames=nature&colnames=hpa&colnames=hpb&colnames=hpc&colnames=hpd&colnames=hpe&colnames=cpa&colnames=cpb&colnames=cpc&colnames=cpd&colnames=cpe&colnames=hpostal&colnames=cpostal&colnames=teaworddate&colnames=teaname_e&colnames=christic&datatrans='
         return self._get_post_data_file(url, data)
@@ -173,6 +187,7 @@ class SchoolSoftAPI:
         Returns:
             csv 內容，存在 stringio 物件中
         """
+        self.logger.debug('合併教師職務')
         teachers_job_info = {}
         self.session.get(
             '{0}/jsp/people/teasrv_data.jsp?seyear={1}&sesem={2}'.format(self.baseurl, self.semester[:-1], self.semester[-1]),
@@ -188,6 +203,7 @@ class SchoolSoftAPI:
             csv_stringio = io.StringIO(self.response_raw.decode('utf-8'))
         except UnicodeDecodeError:
             # 有的學校吐出來的 csv 不是 utf-8 而是 big5
+            self.logger.info('csv 檔案非 utf-8 編碼，嘗試使用 big5 解碼')
             csv_stringio = io.StringIO(self.response_raw.decode('cp950'))
         for row in csv.reader(csv_stringio):
             # 共五欄且第一欄為數字才處理
@@ -206,6 +222,7 @@ class SchoolSoftAPI:
         Returns:
             str: csv 內容
         """
+        self.logger.debug('轉換資料成 csv 格式')
         csv_content = io.StringIO()
         csv_writer = csv.writer(csv_content)
         csv_writer.writerow(headers)
@@ -225,6 +242,7 @@ class SchoolSoftAPI:
         Returns:
             資料結構或是 csv 內容，端看 `output_format` 指定何種
         """
+        self.logger.debug('傾印學生資料，輸出格式為 %s', output_format)
         xls_file = self._get_students_xls_file()
         self.students.clear()
         try:
@@ -249,23 +267,21 @@ class SchoolSoftAPI:
                             'identity': sheet.cell(i, 6).value
                         }
                     )
-        except ValueError as e:
-            print('解析學生 xls 錯誤，請檢查格式是否正確')
-            print('傾印目前學生資訊原始格式如下：')
-            pprint(
-                {
-                    'student_id': sheet.cell(i, 0).value,
-                    'name': sheet.cell(i, 1).value,
-                    'grade': sheet.cell(i, 2).value,
-                    'class': sheet.cell(i, 3).value,
-                    'birthday': sheet.cell(i, 4).value,
-                    'seat_number': sheet.cell(i, 5).value,
-                    'identity': sheet.cell(i, 6).value
-                }
-            )
+        except ValueError:
+            student = {
+                'student_id': sheet.cell(i, 0).value,
+                'name': sheet.cell(i, 1).value,
+                'grade': sheet.cell(i, 2).value,
+                'class': sheet.cell(i, 3).value,
+                'birthday': sheet.cell(i, 4).value,
+                'seat_number': sheet.cell(i, 5).value,
+                'identity': sheet.cell(i, 6).value
+            }
+            self.logger.exception('解析學生 xls 錯誤，請檢查格式是否正確： %s', student)
             raise
         finally:
             os.unlink(xls_file)
+        self.logger.info('傾印學生資料成功')
         if output_format == 'csv':
             return self._to_csv(
                 ['學號', '姓名', '年級', '班級', '生日', '座號', '身份證字號'],
@@ -285,6 +301,7 @@ class SchoolSoftAPI:
         Returns:
             資料結構或是 csv 內容，端看 `output_format` 指定何種
         """
+        self.logger.debug('傾印教師資料，輸出格式為 %s', output_format)
         xls_file = self._get_teachers_xls_file()
         job_info = self._get_teachers_job_info_csv()
         try:
@@ -314,22 +331,20 @@ class SchoolSoftAPI:
                         teacher['class'] = job_info[teacher['identity']]['class']
                     self.teachers.append(teacher)
         except ValueError:
-            print('解析教師 csv 錯誤，請檢查格式是否正確')
-            print('傾印目前教師資訊原始格式如下：')
-            pprint(
-                {
-                    'identity': sheet.cell(i, 0).value,
-                    'name': sheet.cell(i, 1).value,
-                    'gender': sheet.cell(i, 2).value,
-                    'birthday': sheet.cell(i, 3).value,
-                    'email': sheet.cell(i, 6).value,
-                    'job_title': job_info[teacher['identity']]['job_title'],
-                    'class': job_info[teacher['identity']]['class']
-                }
-            )
+            teacher = {
+                'identity': sheet.cell(i, 0).value,
+                'name': sheet.cell(i, 1).value,
+                'gender': sheet.cell(i, 2).value,
+                'birthday': sheet.cell(i, 3).value,
+                'email': sheet.cell(i, 6).value,
+                'job_title': job_info[teacher['identity']]['job_title'],
+                'class': job_info[teacher['identity']]['class']
+            }
+            self.logger.exception('解析教師 csv 錯誤，請檢查格式是否正確： %s', teacher)
             raise
         finally:
             os.unlink(xls_file)
+        self.logger.info('傾印教師資料成功')
         if output_format == 'csv':
             return self._to_csv(
                 ['身份證字號', '姓名', '性別', '生日', '電子郵件', '職稱', '班級'],
@@ -341,6 +356,7 @@ class SchoolSoftAPI:
 
     def _change_to_personnel_module(self):
         """切換至人事系統"""
+        self.logger.debug('切換至人事系統')
         self.session.get('{0}/Module_Change.do?pid=0070&module=people&path=&moduleName=人事資料管理'.format(self.baseurl))
 
     def _find_teacher_teaid(self, identity, name):
@@ -355,7 +371,7 @@ class SchoolSoftAPI:
         Returns:
             str: teaId，校務系統用來記錄每個帳號的一個獨一無二的編號
         """
-
+        self.logger.debug('尋找教師 %s %s 的 teaid', identity, name)
         self.response = self.session.get('{0}/jsp/people/teabasicdata.jsp'.format(self.baseurl))
         re_result = re.finditer(r'''<font size="\d+"><a name='tea(\w+)'></a>{0}</font>'''.format(name), self.response.text)
         if re_result:
@@ -368,6 +384,7 @@ class SchoolSoftAPI:
                 )
                 re_identity = re.search(r'"passwd2\.jsp\?idno=(\w+)', self.response.text)
                 if re_identity and re_identity.group(1) == identity:
+                    self.logger.debug('確認 teaid 為 %s', schoolsoft_teaid)
                     return schoolsoft_teaid
         else:
             return None
@@ -504,7 +521,12 @@ class SchoolSoftAPI:
             files={'teapic': ('', '')}
         )
         
-        return True if '基本資料' in self.response.text else False
+        if '基本資料' in self.response.text:
+            self.logger.info('刪除教師 %s %s 成功', identity, name)
+            return True
+        else:
+            self.logger.info('刪除教師 %s %s 失敗', identity, name)
+            return False
 
     def add_teacher(self, identity, name, gender, birthday):
         """新增教師
@@ -630,7 +652,12 @@ class SchoolSoftAPI:
             files={'teapic': ('', '')}
         )
 
-        return True if identity in self.response.text else False
+        if identity in self.response.text:
+            self.logger.info('新增教師 %s %s 成功', identity, name)
+            return True
+        else:
+            self.logger.info('新增教師 %s %s 失敗', identity, name)
+            return False
 
     def reset_teacher_password(self, identity, name):
         """重設教師密碼
@@ -655,6 +682,8 @@ class SchoolSoftAPI:
             # 再連一次一樣的網址給予一樣的參數，會告知密碼已變更
             self.response = self.session.get('{0}/jsp/people/{1}'.format(self.baseurl, re_result.group(0)))
             if '密碼變更完成' in self.response.text:
+                self.logger.info('重設教師 %s %s 密碼成功', identity, name)
                 return True
         else:
+            self.logger.info('重設教師 %s %s 密碼失敗', identity, name)
             return False
