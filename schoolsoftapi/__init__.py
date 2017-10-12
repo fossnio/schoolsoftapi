@@ -107,7 +107,8 @@ class SchoolSoftAPI:
             captcha_number = subprocess.Popen(
                 ['tesseract', 'stdin', 'stdout', 'digits'],
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             ).communicate(self.response_raw)[0].decode('utf-8').strip()
             self.logger.debug('辨識 captcha 結果為： %s', captcha_number)
 
