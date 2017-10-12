@@ -39,7 +39,7 @@ class SchoolSoftAPI:
 
         self.username = username
         self.password = password
-        self.semester = semester
+        self.semester = str(semester)
         self.baseurl = baseurl
         self.logger = logger if logger else logging.getLogger(__name__)
         self.session = requests.Session()
