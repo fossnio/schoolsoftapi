@@ -10,7 +10,7 @@
 
 .. automodule:: schoolsoftapi
    :members:
-
+   :special-members: __init__
 
 
 索引與表格
